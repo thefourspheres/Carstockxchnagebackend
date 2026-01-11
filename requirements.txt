@@ -1,23 +1,21 @@
-fastapi
-uvicorn
-sqlalchemy
-asyncpg
-psycopg2-binary
-python-dotenv
-passlib[bcrypt]
-python-jose
-python-multipart
-pydantic>=2.0
-pydantic-settings>=2.0
-email-validator
-psycopg2-binary
-alembic
-httpx
-pytest
-pytest-asyncio
-pytest-cov
-coverage
-black
-isort
-flake8
-mypy
+# Core framework
+fastapi==0.127.0
+uvicorn[standard]==0.40.0
+
+# Database
+SQLAlchemy==2.0.45
+asyncpg==0.31.0
+psycopg2-binary==2.9.11
+
+# Auth & security
+passlib[bcrypt]==1.7.4
+python-jose==3.5.0
+
+# Pydantic & settings
+pydantic==2.12.5
+pydantic-settings==2.12.0
+email-validator==2.3.0
+
+# Forms, files, env
+python-multipart==0.0.21
+python-dotenv==1.2.1
