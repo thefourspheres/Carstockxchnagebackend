@@ -9,3 +9,15 @@ python-jose
 python-multipart
 pydantic>=2.0
 pydantic-settings>=2.0
+email-validator
+psycopg2-binary
+alembic
+httpx
+pytest
+pytest-asyncio
+pytest-cov
+coverage
+black
+isort
+flake8
+mypy
