@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "SUPER_SECRET_KEY_123"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
+
+
+        # 🔔 ALERT EMAIL CONFIG (NEW)
+    ALERT_EMAIL_FROM: str | None = None
+    ALERT_EMAIL_PASSWORD: str | None = None
+    ALERT_EMAIL_TO: str | None = None
     
     # Storage Configuration
     STORAGE_TYPE: str = "local"  # local, s3, cloudinary

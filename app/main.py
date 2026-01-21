@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from app.core.database import check_db_connection, engine, Base
+from app.core.startup_notifier import startup_health_check
+from app.core.startup_notifier import startup_health_check
 from app.modules.admin.employee.employee_routes import router as employee_router
 from app.modules.admin.auth.auth_routes import router as auth_router
 from app.modules.admin.role.role_routes import router as role_router
@@ -72,5 +74,11 @@ app.include_router(superadmin_router)
 @app.on_event("startup")
 async def startup_event():
     await check_db_connection()
+
+    from app.core.startup_notifier import startup_health_check
+
+@app.on_event("startup")
+async def notify_on_startup():
+    await startup_health_check()
 
 #6839825c-1e94-40ad-b409-977f519106ed
