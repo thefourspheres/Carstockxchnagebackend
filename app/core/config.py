@@ -6,7 +6,7 @@ from typing import Optional
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:Pass@localhost:5432/carstockxchange"
-    
+
     # JWT
     JWT_SECRET: str = "SUPER_SECRET_KEY_123"
     JWT_ALGORITHM: str = "HS256"
