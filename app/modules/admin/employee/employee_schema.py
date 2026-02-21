@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 from datetime import date
 
@@ -10,6 +11,13 @@ class EmployeeSignupRequest(BaseModel):
     date_of_birth: date | None = None
     designation: str | None = None
     password: str
+    is_active: Optional[bool] = None
+
+
+
+
+
+
 
     @field_validator("password")
     @classmethod

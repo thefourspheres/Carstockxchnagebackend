@@ -23,5 +23,6 @@ python-multipart==0.0.21
 
 # Environment
 python-dotenv==1.2.1
+aiosmtplib
 
 #testing build

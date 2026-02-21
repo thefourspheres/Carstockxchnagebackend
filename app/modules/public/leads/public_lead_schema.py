@@ -24,3 +24,12 @@ class CarReportRequest(BaseModel):
     email: EmailStr
     car_id: UUID
     whatsapp_opt_in: bool = True
+
+
+class carsalerequest(BaseModel):
+    Ownername: str
+    carregisteryear: int
+    mobile: str
+    email: EmailStr
+    car_model: str
+    expected_price: float

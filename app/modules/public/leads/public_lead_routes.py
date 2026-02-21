@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.modules.admin.leads.lead_model import CustomerLead
+from app.modules.admin.leads.lead_model import CustomerLead, carsaleslead
 from .public_lead_schema import (
     CallbackRequest,
     TestDriveRequest,
-    CarReportRequest
+    CarReportRequest,
+    carsalerequest
 )
 
 router = APIRouter(
@@ -63,3 +64,19 @@ async def request_car_report(payload: CarReportRequest, db: AsyncSession = Depen
     await db.commit()
 
     return {"message": "Car report request submitted successfully"}
+
+
+@router.post("/car-sale")
+async def request_car_sale(payload: carsalerequest, db: AsyncSession = Depends(get_db)):
+    lead = carsaleslead(
+        carregisteryear=payload.carregisteryear,
+        ownername=payload.Ownername,
+        mobile=payload.mobile,
+        email=payload.email,
+        car_model=payload.car_model,
+        expected_price=payload.expected_price
+    )
+    db.add(lead)
+    await db.commit()
+    return {"message": "Car sale request submitted successfully"}
+

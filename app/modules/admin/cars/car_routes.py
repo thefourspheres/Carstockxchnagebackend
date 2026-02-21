@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, File, UploadFile, status
 from fastapi.params import Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
+from app.core.permissions import requireORGANIZATION_ADMIN
 
 from app.core.database import get_db
 from app.core.permissions import require_roles
@@ -26,7 +27,7 @@ router = APIRouter(
 async def create_car(
     payload: CarCreateSchema,
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
+    user=Depends(requireORGANIZATION_ADMIN())
 ):
     car = await CarService.create_car(db, payload, user)
     return {
@@ -39,8 +40,10 @@ async def create_car(
 @router.post("/list", status_code=status.HTTP_200_OK)
 async def list_cars(
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
-):
+    # user=Depends(requireORGANIZATION_ADMIN())):
+    user=Depends(require_roles("SALES"))):
+
+    #  "ADMIN", "SUPER_ADMIN", "PURCHASE"
     cars = await CarService.get_my_cars(db, user)
     return {
         "success": True,
@@ -111,7 +114,7 @@ async def upload_car_images(
     image_type: str = Form(...),
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
+    user=Depends(requireORGANIZATION_ADMIN())
 ):
     """
     Upload multiple images for a car (ALL DATA FROM BODY)
@@ -143,6 +146,7 @@ async def upload_car_images(
             for img in result
         ]
     }
+    
 
 @router.post("/get-images", status_code=status.HTTP_200_OK)
 async def get_images(

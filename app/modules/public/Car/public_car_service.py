@@ -53,7 +53,7 @@ class PublicCarService:
 
         for car in cars:
             banner_result = await db.execute(
-                select(CarImage.image_path)
+                select(CarImage.image_type)
                 .where(
                     CarImage.car_id == car.id,
                     CarImage.image_type == "banner"
