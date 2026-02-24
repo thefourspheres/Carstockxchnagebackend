@@ -27,7 +27,8 @@ router = APIRouter(
 async def create_car(
     payload: CarCreateSchema,
     db: AsyncSession = Depends(get_db),
-    user=Depends(requireORGANIZATION_ADMIN())
+    # user=Depends(requireORGANIZATION_ADMIN())
+    user=Depends(require_roles("SALES"))
 ):
     car = await CarService.create_car(db, payload, user)
     return {
@@ -114,7 +115,8 @@ async def upload_car_images(
     image_type: str = Form(...),
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
-    user=Depends(requireORGANIZATION_ADMIN())
+    # user=Depends(requireORGANIZATION_ADMIN())
+    user=Depends(require_roles("SALES"))
 ):
     """
     Upload multiple images for a car (ALL DATA FROM BODY)
@@ -147,12 +149,14 @@ async def upload_car_images(
         ]
     }
     
+    
 
 @router.post("/get-images", status_code=status.HTTP_200_OK)
 async def get_images(
     payload: CarIDOnlySchema,
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
+    # user=Depends(require_roles("PURCHASE"))
+    user=Depends(requireORGANIZATION_ADMIN())
 ):
     images = await CarService.get_car_images(
         db, payload.car_id, user
