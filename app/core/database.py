@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 # ✅ SINGLE ENGINE (ONLY HERE)
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=True,   # keep True for debugging, False in prod
-)
+    echo=False,
+    pool_size=10,
+    max_overflow=20,)
 
 # ✅ SINGLE SESSION FACTORY
 AsyncSessionLocal = sessionmaker(
