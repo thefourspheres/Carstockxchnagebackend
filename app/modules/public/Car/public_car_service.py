@@ -53,18 +53,22 @@ class PublicCarService:
 
         for car in cars:
             banner_result = await db.execute(
-                select(CarImage.image_type)
-                .where(
-                    CarImage.car_id == car.id,
-                    CarImage.image_type == "banner"
-                )
-                .limit(1)
+            select(CarImage.image_url)
+            .where(
+                CarImage.car_id == car.id,
+                CarImage.image_type == "banner",
+                CarImage.is_active.is_(True)
             )
+            .order_by(CarImage.display_order)
+            .limit(1)
+        )
 
-            data.append({
-                "car": car,
-                "banner_image": banner_result.scalar()
-            })
+        banner_image = banner_result.scalar()
+
+        data.append({
+            "car": car,
+            "banner_image": banner_image
+        })
 
         return data
 
@@ -80,7 +84,7 @@ class PublicCarService:
         response = {}
 
         for img in images:
-            response.setdefault(img.image_type, []).append(img.image_path)
+            response.setdefault(img.image_type, []).append(img.image_url)
 
         return {
             "car_id": car_id,
