@@ -34,7 +34,7 @@ class CarImage(Base):
     # =======================
     # IMAGE DATA
     # =======================
-    image_type = Column(String(30), nullable=False)  # ✅ ADD THIS
+    image_type = Column(String(30), nullable=False)  #ADD THIS
 
     image_url = Column(String(500), nullable=False)
     thumbnail_url = Column(String(500), nullable=True)
