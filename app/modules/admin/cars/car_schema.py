@@ -12,12 +12,23 @@ class CarCreateSchema(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     brand: str = Field(..., min_length=1, max_length=50)
     year: int = Field(..., ge=1900, le=datetime.now().year + 1)
-
+    car_type: Optional[str] = Field(None, max_length=20)
     # Optional basics
     kilometer: Optional[int] = Field(None, ge=0)
     fuel_type: Optional[str] = Field(None, max_length=20)
     transmission: Optional[str] = Field(None, max_length=20)
     price: Optional[int] = Field(None, ge=0)
+    saleprice: Optional[float] = Field(None, ge=0)
+    bottomprice: Optional[float] = Field(None, ge=0)
+
+
+    exteriors_lights_rating: Optional[int] = Field(None, ge=0, le=5)
+    core_systems_rating: Optional[int] = Field(None, ge=0, le=5)
+    supporting_systems_rating: Optional[int] = Field(None, ge=0, le=5)
+    interiors_ac_rating: Optional[int] = Field(None, ge=0, le=5)
+    inspection_rating: Optional[int] = Field(None, ge=0, le=5)
+
+    insurance_type: Optional[str] = None
 
     # JSON / flexible fields
     engine_specs: Optional[Union[Dict[str, Any], str]] = None
@@ -132,7 +143,7 @@ class CarResponseSchema(BaseModel):
     name: str
     brand: str
     year: int
-
+    car_type:str
     kilometer: Optional[int]
     fuel_type: Optional[str]
     transmission: Optional[str]

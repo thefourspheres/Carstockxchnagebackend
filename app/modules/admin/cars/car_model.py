@@ -1,5 +1,5 @@
 # app/modules/cars/car_model.py
-from sqlalchemy import Column, ForeignKey, String, Integer, Boolean, DateTime, Text
+from sqlalchemy import Column, ForeignKey, String, Integer, Boolean,Numeric, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -21,8 +21,9 @@ class Car(Base):
     fuel_type = Column(String(20), nullable=False)
     transmission = Column(String(20), nullable=False)
     price = Column(Integer, nullable=True)
-    
-
+    car_type= Column(String(50), nullable=False)
+    saleprice=Column(Numeric(12,2), nullable=True)
+    bottomprice=Column(Numeric(12,2), nullable=True)
 
 
 
@@ -33,6 +34,17 @@ class Car(Base):
     suspension = Column(JSONB, nullable=True)
     tyres = Column(JSONB, nullable=True)
     features = Column(JSONB, nullable=True)
+
+
+    exteriors_lights_rating = Column(Integer, nullable=True)
+    core_systems_rating = Column(Integer, nullable=True)
+    supporting_systems_rating = Column(Integer, nullable=True)
+    interiors_ac_rating = Column(Integer, nullable=True)
+    inspection_rating = Column(Integer, nullable=True)
+
+    insurance_type = Column(String(50), nullable=True)
+
+
     
     # Additional fields
     color = Column(String(30), nullable=True)
