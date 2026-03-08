@@ -85,9 +85,10 @@ class PublicCarService:
                 "suspension": car.suspension,
                 "tyres": car.tyres,
                     },
+                "features":{
+                car.features,
 
-
-                "features": car.features,
+                }, 
                 "is_active": car.is_active,
                 "created_at": str(car.created_at),
                 "updated_at": str(car.updated_at),
