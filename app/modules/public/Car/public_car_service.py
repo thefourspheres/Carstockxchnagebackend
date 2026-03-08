@@ -89,6 +89,7 @@ class PublicCarService:
                 car.features,
 
                 }, 
+                
                 "is_active": car.is_active,
                 "created_at": str(car.created_at),
                 "updated_at": str(car.updated_at),
