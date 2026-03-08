@@ -117,10 +117,10 @@ class PublicCarService:
         )
         images = result.scalars().all()
 
-        response = {}
+        response = []
 
         for img in images:
-            response.setdefault(img.image_type, []).append(img.image_url)
+            response.append(img.image_url)
 
         return {
             "car_id": car_id,
