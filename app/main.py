@@ -8,15 +8,13 @@ from app.modules.admin.role.role_routes import router as role_router
 from app.modules.admin.organization.organization_routes import router as organization_router
 from app.modules.superadmin_routes import router as superadmin_router
 from app.modules.admin.cars.car_routes import router as car_router
-from app.modules.public.Car.public_car_routes import router as public_car_router
-
-from app.modules.admin.cars.car_routes import router as car_router
 from app.modules.admin.leads.admin_lead_routes import router as admin_lead_router1
 from app.modules.admin.leadfollowup.admin_lead_routes import router as admin_lead_router
 
 
-from app.modules.public.Car.public_car_routes import router as public_car_router
 from app.modules.public.leads.public_lead_routes import router as public_lead_router
+from app.modules.public.Car.public_car_routes import router as public_cars_router
+
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -47,8 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(car_router)
+
 
 @app.get("/")
 async def root():
@@ -74,24 +71,16 @@ async def health_check():
 
 app.include_router(auth_router)
 app.include_router(employee_router)
-app.include_router(car_router)
 app.include_router(role_router)
 app.include_router(organization_router)
 app.include_router(superadmin_router)
-
-app.include_router(public_car_router)
-
-
-
-
-
-
 # Admin (secured)
 app.include_router(car_router)
 app.include_router(admin_lead_router1)
 app.include_router(admin_lead_router)
+
 # Public (open)
-app.include_router(public_car_router)
+app.include_router(public_cars_router)
 app.include_router(public_lead_router)
 
 #log
