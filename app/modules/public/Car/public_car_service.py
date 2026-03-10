@@ -76,7 +76,7 @@ class PublicCarService:
                 "kilometer": car.kilometer,
                 "fuel_type": car.fuel_type,
                 "transmission": car.transmission,
-                "price": car.price,
+                "price": car.saleprice,
                     # ✅ Specifications ek object ke andar
                 "specifications": {
                 "engine_specs": car.engine_specs,
