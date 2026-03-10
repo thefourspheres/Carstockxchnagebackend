@@ -28,7 +28,7 @@ async def create_car(
     payload: CarCreateSchema,
     db: AsyncSession = Depends(get_db),
     # user=Depends(requireORGANIZATION_ADMIN())
-    user=Depends(require_roles("SALES","PURCHASE"))
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
 ):
     car = await CarService.create_car(db, payload, user)
     return {
@@ -42,7 +42,7 @@ async def create_car(
 async def list_cars(
     db: AsyncSession = Depends(get_db),
     # user=Depends(requireORGANIZATION_ADMIN())):
-    user=Depends(require_roles("SALES","PURCHASE"))):
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))):
 
     #  "ADMIN", "SUPER_ADMIN", "PURCHASE"
     cars = await CarService.get_my_cars(db, user)
@@ -116,7 +116,7 @@ async def upload_car_images(
     files: List[UploadFile] = File(...),
     db: AsyncSession = Depends(get_db),
     # user=Depends(requireORGANIZATION_ADMIN())
-    user=Depends(require_roles("SALES","PURCHASE"))
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
 ):
     """
     Upload multiple images for a car (ALL DATA FROM BODY)
@@ -154,7 +154,7 @@ async def upload_car_images(
 async def get_images(
     payload: CarIDOnlySchema,
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("SALES","PURCHASE"))
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
     # user=Depends(requireORGANIZATION_ADMIN())
 ):
     images = await CarService.get_car_images(
