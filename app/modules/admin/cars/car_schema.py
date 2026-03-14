@@ -88,10 +88,23 @@ class CarUpdateSchema(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     brand: Optional[str] = Field(None, min_length=1, max_length=50)
     year: Optional[int] = Field(None, ge=1900, le=datetime.now().year + 1)
+    car_type: Optional[str] = Field(None, max_length=20)
+
     kilometer: Optional[int] = Field(None, ge=0)
     fuel_type: Optional[str] = Field(None, max_length=20)
     transmission: Optional[str] = Field(None, max_length=20)
+
     price: Optional[int] = Field(None, ge=0)
+    saleprice: Optional[float] = Field(None, ge=0)
+    bottomprice: Optional[float] = Field(None, ge=0)
+
+    exteriors_lights_rating: Optional[int] = Field(None, ge=0, le=5)
+    core_systems_rating: Optional[int] = Field(None, ge=0, le=5)
+    supporting_systems_rating: Optional[int] = Field(None, ge=0, le=5)
+    interiors_ac_rating: Optional[int] = Field(None, ge=0, le=5)
+    inspection_rating: Optional[int] = Field(None, ge=0, le=5)
+
+    insurance_type: Optional[str] = None
 
     engine_specs: Optional[Union[Dict[str, Any], str]] = None
     dimensions: Optional[Union[Dict[str, Any], str]] = None
@@ -107,6 +120,7 @@ class CarUpdateSchema(BaseModel):
     ownership: Optional[str] = None
     rto: Optional[str] = None
 
+    # Validators reuse
     @field_validator("fuel_type")
     @classmethod
     def validate_fuel_type(cls, v):
@@ -122,12 +136,12 @@ class CarUpdateSchema(BaseModel):
     def validate_insurance_date(cls, v):
         return CarCreateSchema.validate_insurance_date(v)
 
-
 # =========================
 # SIMPLE REQUEST SCHEMAS
 # =========================
 class CarIDOnlySchema(BaseModel):
     car_id: UUID
+    image_type: Optional[str] = None
 
 
 class CarDeleteSchema(BaseModel):
@@ -169,3 +183,8 @@ class CarResponseSchema(BaseModel):
     model_config = {
         "from_attributes": True
     }
+class CarIdSchema(BaseModel):
+    car_id: UUID
+
+class ImageDeleteSchema(BaseModel):
+    image_id: UUID    

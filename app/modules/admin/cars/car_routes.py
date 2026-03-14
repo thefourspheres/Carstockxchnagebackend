@@ -9,8 +9,10 @@ from app.core.database import get_db
 from app.core.permissions import require_roles
 from .car_schema import (
     CarCreateSchema,
+    CarIdSchema,
     CarUpdateSchema,
     CarIDOnlySchema,
+    ImageDeleteSchema,
 )
 from .car_service import CarService
 
@@ -22,7 +24,6 @@ router = APIRouter(
 # =======================
 # CAR CRUD
 # =======================
-
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_car(
     payload: CarCreateSchema,
@@ -37,6 +38,32 @@ async def create_car(
         "car_id": str(car.id)
     }
 
+@router.put("/update", status_code=status.HTTP_200_OK)
+async def update_car(
+    payload: CarUpdateSchema,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
+):
+    car = await CarService.update_car(db, payload, user)
+
+    return {
+        "success": True,
+        "message": "Car updated successfully",
+    }
+
+
+@router.post("/get-car-by-id")
+async def get_car_by_id(
+    payload: CarIdSchema,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(require_roles("SALES", "PURCHASE", "ORGANIZATION_ADMIN"))
+):
+    car = await CarService.get_car_by_id(db, payload.car_id, user)
+
+    return {
+        "success": True,
+        "data": car
+    }
 
 @router.post("/list", status_code=status.HTTP_200_OK)
 async def list_cars(
@@ -66,18 +93,18 @@ async def car_details(
     }
 
 
-@router.post("/update", status_code=status.HTTP_200_OK)
-async def update_car(
-    payload: CarUpdateSchema,
-    db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
-):
-    car = await CarService.update_car(db, payload.car_id, payload, user)
-    return {
-        "success": True,
-        "message": "Car updated successfully",
-        "car_id": str(car.id)
-    }
+# @router.post("/update", status_code=status.HTTP_200_OK)
+# async def update_car(
+#     payload: CarUpdateSchema,
+#     db: AsyncSession = Depends(get_db),
+#     user=Depends(require_roles("PURCHASE"))
+# ):
+#     car = await CarService.update_car(db, payload.car_id, payload, user)
+#     return {
+#         "success": True,
+#         "message": "Car updated successfully",
+#         "car_id": str(car.id)
+#     }
 
 
 @router.post("/delete", status_code=status.HTTP_200_OK)
@@ -155,11 +182,14 @@ async def get_images(
     payload: CarIDOnlySchema,
     db: AsyncSession = Depends(get_db),
     user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
-    # user=Depends(requireORGANIZATION_ADMIN())
 ):
     images = await CarService.get_car_images(
-        db, payload.car_id, user
+        db,
+        payload.car_id,
+        user,
+        payload.image_type
     )
+
     return {
         "success": True,
         "total_images": len(images),
@@ -169,11 +199,12 @@ async def get_images(
 
 @router.post("/delete-image", status_code=status.HTTP_200_OK)
 async def delete_image(
-    image_id: UUID,
+    payload: ImageDeleteSchema,
     db: AsyncSession = Depends(get_db),
-    user=Depends(require_roles("PURCHASE"))
+    user=Depends(require_roles("SALES","PURCHASE","ORGANIZATION_ADMIN"))
 ):
-    await CarService.delete_car_image(db, image_id, user)
+    await CarService.delete_car_image(db, payload.image_id, user)
+
     return {
         "success": True,
         "message": "Image deleted"

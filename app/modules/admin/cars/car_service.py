@@ -39,12 +39,22 @@ class CarService:
 
     @staticmethod
     async def get_my_cars(db: AsyncSession, user: dict):
+
         user_id = CarService._uuid(user["sub"])
-        result = await db.execute(
-            select(Car)
-            .options(selectinload(Car.images))
-            .where(Car.created_by == user_id, Car.is_active.is_(True))
-        )
+        role = user.get("role")
+
+        query = (
+        select(Car)
+        .options(selectinload(Car.images))
+        .where(Car.is_active.is_(True))
+         )
+
+        # If user is NOT admin or sales → only their cars
+        if role not in ["SALES", "ORGANIZATION_ADMIN"]:
+            query = query.where(Car.created_by == user_id)
+
+        result = await db.execute(query)
+
         return result.scalars().all()
 
     @staticmethod
@@ -65,12 +75,23 @@ class CarService:
         return car
 
     @staticmethod
-    async def update_car(db: AsyncSession, car_id: UUID, payload: CarUpdateSchema, user: dict):
-        car = await CarService.get_car_by_id(db, car_id, user)
-        for k, v in payload.model_dump(exclude={"car_id"}, exclude_none=True).items():
-            setattr(car, k, v)
+    async def update_car(db: AsyncSession, payload: CarUpdateSchema, user: dict):
+
+        query = select(Car).where(Car.id == payload.car_id)
+        result = await db.execute(query)
+        car = result.scalar_one_or_none()
+
+        if not car:
+            raise HTTPException(status_code=404, detail="Car not found")
+
+        update_data = payload.model_dump(exclude_unset=True, exclude={"car_id"})
+
+        for key, value in update_data.items():
+            setattr(car, key, value)
+
         await db.commit()
         await db.refresh(car)
+
         return car
 
     @staticmethod
