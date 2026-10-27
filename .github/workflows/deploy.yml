@@ -54,14 +54,17 @@ jobs:
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest \
             image --exit-code 1 --severity CRITICAL --ignore-unfixed "$IMG:$TAG"
-      - run: docker push "$IMG:$TAG"
-      - name: Deploy to VPS
-        env:
-          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          HOST: ${{ secrets.DEPLOY_HOST }}
+      - name: Push image (immutable sha tag + latest)
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
-          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes deploy@"$HOST" "$SVC $TAG"
+          docker tag "$IMG:$TAG" "$IMG:latest"
+          docker push "$IMG:$TAG"
+          docker push "$IMG:latest"
+      # shortcut: Coolify app tracks :latest; rollback = set image tag to an older sha-... in Coolify UI
+      - name: Deploy via Coolify
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+        run: |
+          curl -fsS --max-time 60 -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            "$COOLIFY_URL/api/v1/deploy?uuid=$APP_UUID&force=false"

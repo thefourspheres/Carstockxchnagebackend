@@ -11,4 +11,5 @@ RUN useradd -r -u 10001 appuser && mkdir -p uploads && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "172.30.0.0/24"]
+# not published on host; only Coolify proxy can reach it, so trust its X-Forwarded-*
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
