@@ -54,7 +54,11 @@ jobs:
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest \
             image --exit-code 1 --severity CRITICAL --ignore-unfixed "$IMG:$TAG"
-      - run: docker push "$IMG:$TAG"
+      - name: Push image (immutable sha tag + latest)
+        run: |
+          docker tag "$IMG:$TAG" "$IMG:latest"
+          docker push "$IMG:$TAG"
+          docker push "$IMG:latest"
       - name: Deploy to VPS
         env:
           KEY: ${{ secrets.DEPLOY_SSH_KEY }}
