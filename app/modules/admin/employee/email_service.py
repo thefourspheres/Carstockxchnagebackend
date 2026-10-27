@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import aiosmtplib
 from email.message import EmailMessage
@@ -5,9 +6,9 @@ from jinja2 import Environment, FileSystemLoader
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = "ajinkyakote88@gmail.com"
-SMTP_PASSWORD = "oska alqz zyno iqmd"
-FROM_EMAIL = "ajinkyakote88@gmail.com"
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+FROM_EMAIL = os.getenv("SMTP_FROM", SMTP_USER)
 
 BASE_DIR = Path(__file__).resolve().parent  # employee folder
 
