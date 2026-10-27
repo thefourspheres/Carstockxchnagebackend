@@ -59,12 +59,13 @@ jobs:
           docker tag "$IMG:$TAG" "$IMG:latest"
           docker push "$IMG:$TAG"
           docker push "$IMG:latest"
-      # shortcut: Coolify app tracks :latest; rollback = set image tag to an older sha-... in Coolify UI
-      - name: Deploy via Coolify
+      - name: Deploy to VPS
         env:
-          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          curl -fsS --max-time 60 -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            "$COOLIFY_URL/api/v1/deploy?uuid=$APP_UUID&force=false"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes deploy@"$HOST" "$SVC $TAG"
