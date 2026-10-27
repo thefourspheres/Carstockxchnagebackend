@@ -39,7 +39,7 @@ app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this in production
+    allow_origins=[o for o in os.getenv("CORS_ORIGINS", "").split(",") if o],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
