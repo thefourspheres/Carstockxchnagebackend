@@ -16,16 +16,25 @@ env:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: app, POSTGRES_PASSWORD: ci, POSTGRES_DB: cartest }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Secret scan (current code)
         run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --no-git --source /repo -v
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt pip-audit
+      - run: pip install -r requirements.txt pip-audit pytest pytest-asyncio httpx
       - name: Import check
         run: python -c "import app.main"
         env: { DATABASE_URL: "postgresql+asyncpg://x:x@localhost/x", JWT_SECRET: ci }
+      - name: Tests
+        run: python -m pytest -q
+        env: { DATABASE_URL: "postgresql+asyncpg://app:ci@localhost:5432/cartest", JWT_SECRET: "ci-only-secret-0123456789abcdef0123456789abcdef" }
       - name: Dependency vuln scan
         run: pip-audit -r requirements.txt
 
