@@ -51,12 +51,14 @@ async def assign_role(
     db: AsyncSession = Depends(get_db)
 ):
     emp = await db.get(Employee, payload.employee_id)
-    if not emp:
+    if not emp or str(emp.organization_id) != str(user.get("organization_id")):
         raise HTTPException(status_code=404, detail="Employee not found")
 
     role = await db.get(Role, payload.role_id)
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
+    if role.name == "SUPER_ADMIN" and "SUPER_ADMIN" not in user.get("roles", []):
+        raise HTTPException(status_code=403, detail="Only a super admin can grant SUPER_ADMIN")
 
     exists = await db.execute(
         select(EmployeeRole).where(

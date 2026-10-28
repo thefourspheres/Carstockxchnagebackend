@@ -136,3 +136,24 @@ async def test_upload_rejects_bad_type_and_traversal(client):
     r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
                           files={"files": ("a.php", b"<?php", "application/x-php")}, headers=ADMIN)
     assert r.status_code == 400
+
+
+async def test_role_assign_is_org_scoped_and_no_escalation(client):
+    from app.core.database import AsyncSessionLocal
+    from app.modules.admin.employee.employee_model import Employee
+    from app.modules.admin.organization.organization_model import Organization
+    from app.modules.admin.role.role_model import Role
+    async with AsyncSessionLocal() as db:
+        db.add_all([Organization(id=uuid.UUID(ORG_A), name="A"), Organization(id=uuid.UUID(ORG_B), name="B")])
+        await db.flush()
+        mine = Employee(name="m", email="m@a.in", organization_id=uuid.UUID(ORG_A))
+        theirs = Employee(name="t", email="t@b.in", organization_id=uuid.UUID(ORG_B))
+        sales, sup = Role(name="SALES"), Role(name="SUPER_ADMIN")
+        db.add_all([mine, theirs, sales, sup])
+        await db.commit()
+        ids = dict(mine=str(mine.id), theirs=str(theirs.id), sales=sales.id, sup=sup.id)
+    post = lambda e, r, h=ADMIN: client.post("/admin/roles/assign", json={"employee_id": ids[e], "role_id": ids[r]}, headers=h)
+    assert (await post("theirs", "sales")).status_code == 404
+    assert (await post("mine", "sup")).status_code == 403
+    assert (await post("mine", "sales", HR)).status_code == 403
+    assert (await post("mine", "sales")).status_code == 200
