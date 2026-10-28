@@ -21,6 +21,7 @@ class Employee(Base):
     password_hash = Column(String)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    invite_sent_at = Column(TIMESTAMP(timezone=True), nullable=True)  # null = welcome email not delivered
 
 
     organization_id = Column(

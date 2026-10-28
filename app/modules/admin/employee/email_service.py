@@ -40,4 +40,5 @@ async def send_welcome_email(to_email: str, username: str, password: str, name: 
         start_tls=True,
         username=SMTP_USER,
         password=SMTP_PASSWORD,
+        timeout=15,
     )
