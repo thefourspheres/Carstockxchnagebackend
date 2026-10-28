@@ -1,4 +1,7 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -26,10 +29,23 @@ async def signup(
     admin=Depends(require_roles(*EMPLOYEES))   # 👈 ADMIN TOKEN
 ):
     try:
-        await EmployeeService.signup(db, payload,admin)
-        return {"message": "Employee registered"}
+        emp = await EmployeeService.signup(db, payload, admin)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    sent = emp.invite_sent_at is not None
+    return {"message": "Employee registered" if sent else "Employee registered, but the welcome email failed",
+            "id": str(emp.id), "email_sent": sent}
+
+
+class ResendInviteRequest(BaseModel):
+    employee_id: UUID
+
+
+@router.post("/resend-invite")
+async def resend_invite(payload: ResendInviteRequest, db: AsyncSession = Depends(get_db),
+                        admin=Depends(require_roles(*EMPLOYEES))):
+    emp = await EmployeeService.resend_invite(db, payload.employee_id, admin)
+    return {"message": f"New login details emailed to {emp.email}", "invite_sent_at": emp.invite_sent_at}
 
 
 # -------------------------
@@ -89,7 +105,8 @@ async def get_all_employees(
             "mobile": emp.mobile,
             "designation": emp.designation,
             "roles": filtered_roles,
-            "is_active": emp.is_active
+            "is_active": emp.is_active,
+            "invite_sent_at": emp.invite_sent_at.isoformat() if emp.invite_sent_at else None,
         })
 
     return response
