@@ -1,10 +1,14 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from uuid import UUID
 
 
 class Settings(BaseSettings):
     # Database (NO DEFAULT)
     DATABASE_URL: str
+
+    # Single-tenant: public website leads belong to this organization.
+    ORG_ID: UUID = UUID("373c4150-e83f-4067-9b3b-ffd889596668")
 
     # JWT
     JWT_SECRET: str
