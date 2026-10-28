@@ -1,190 +1,123 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Dict, Any, Union
-from uuid import UUID
 from datetime import datetime
+from decimal import Decimal
+from typing import Literal, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+CarType = Literal["Hatchback", "Sedan", "SUV", "MUV", "Coupe", "Convertible", "Pickup", "Van"]
+Condition = Literal["New", "Used", "Certified Pre-Owned"]
+FuelType = Literal["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+Transmission = Literal["Manual", "Automatic", "AMT", "CVT", "DCT"]
+Status = Literal["Available", "Reserved", "Sold", "Draft"]
+
+MIN_YEAR = 1980
+Price = Decimal
 
 
-# =========================
-# CREATE CAR
-# =========================
-class CarCreateSchema(BaseModel):
-    # Required
-    name: str = Field(..., min_length=1, max_length=100)
-    brand: str = Field(..., min_length=1, max_length=50)
-    year: int = Field(..., ge=1900, le=datetime.now().year + 1)
-    car_type: Optional[str] = Field(None, max_length=20)
-    # Optional basics
-    kilometer: Optional[int] = Field(None, ge=0)
-    fuel_type: Optional[str] = Field(None, max_length=20)
-    transmission: Optional[str] = Field(None, max_length=20)
-    price: Optional[int] = Field(None, ge=0)
-    saleprice: Optional[float] = Field(None, ge=0)
-    bottomprice: Optional[float] = Field(None, ge=0)
+def _max_year() -> int:
+    return datetime.now().year + 1
 
 
-    exteriors_lights_rating: Optional[int] = Field(None, ge=0, le=5)
-    core_systems_rating: Optional[int] = Field(None, ge=0, le=5)
-    supporting_systems_rating: Optional[int] = Field(None, ge=0, le=5)
-    interiors_ac_rating: Optional[int] = Field(None, ge=0, le=5)
-    inspection_rating: Optional[int] = Field(None, ge=0, le=5)
-
-    insurance_type: Optional[str] = None
-
-    # JSON / flexible fields
-    engine_specs: Optional[Union[Dict[str, Any], str]] = None
-    dimensions: Optional[Union[Dict[str, Any], str]] = None
-    capacity_fuel: Optional[Union[Dict[str, Any], str]] = None
-    suspension: Optional[Union[Dict[str, Any], str]] = None
-    tyres: Optional[Union[Dict[str, Any], str]] = None
-    features: Optional[Union[Dict[str, Any], str]] = None
-
-    # Extra details
-    color: Optional[str] = None
-    registration_number: Optional[str] = None
-    registration_year: Optional[int] = None
-    insurance_valid_until: Optional[str] = None
-    ownership: Optional[str] = None
-    rto: Optional[str] = None
-
-    # -------------------------
-    # Validators
-    # -------------------------
-    @field_validator("fuel_type")
-    @classmethod
-    def validate_fuel_type(cls, v):
-        if not v:
-            return v
-        v = v.lower()
-        if v == "disel":
-            return "Diesel"
-        if v not in {"petrol", "diesel", "cng", "electric", "hybrid"}:
-            raise ValueError("Fuel type must be Petrol, Diesel, CNG, Electric, or Hybrid")
-        return v.title()
-
-    @field_validator("transmission")
-    @classmethod
-    def validate_transmission(cls, v):
-        if not v:
-            return v
-        v = v.lower()
-        if v not in {"manual", "automatic", "cvt", "amt", "dct"}:
-            raise ValueError("Transmission must be Manual, Automatic, CVT, AMT, or DCT")
-        return v.upper() if v in {"cvt", "amt", "dct"} else v.title()
-
-    @field_validator("insurance_valid_until")
-    @classmethod
-    def validate_insurance_date(cls, v):
-        if v:
-            datetime.strptime(v, "%Y-%m-%d")
-        return v
+def _clean(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = " ".join(v.split())
+    return v or None
 
 
-# =========================
-# UPDATE CAR
-# =========================
-class CarUpdateSchema(BaseModel):
-    car_id: UUID = Field(..., description="Car ID to update")
+def _check_year(v: Optional[int]) -> Optional[int]:
+    if v is not None and not MIN_YEAR <= v <= _max_year():
+        raise ValueError(f"Model year must be between {MIN_YEAR} and {_max_year()}")
+    return v
 
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    brand: Optional[str] = Field(None, min_length=1, max_length=50)
-    year: Optional[int] = Field(None, ge=1900, le=datetime.now().year + 1)
-    car_type: Optional[str] = Field(None, max_length=20)
 
-    kilometer: Optional[int] = Field(None, ge=0)
-    fuel_type: Optional[str] = Field(None, max_length=20)
-    transmission: Optional[str] = Field(None, max_length=20)
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    price: Optional[int] = Field(None, ge=0)
-    saleprice: Optional[float] = Field(None, ge=0)
-    bottomprice: Optional[float] = Field(None, ge=0)
 
-    exteriors_lights_rating: Optional[int] = Field(None, ge=0, le=5)
-    core_systems_rating: Optional[int] = Field(None, ge=0, le=5)
-    supporting_systems_rating: Optional[int] = Field(None, ge=0, le=5)
-    interiors_ac_rating: Optional[int] = Field(None, ge=0, le=5)
-    inspection_rating: Optional[int] = Field(None, ge=0, le=5)
+class CarCreateSchema(_Strict):
+    name: str = Field(..., min_length=2, max_length=100)
+    brand: str = Field(..., min_length=2, max_length=50)
+    car_type: CarType
+    condition: Condition
+    year: int
+    fuel_type: FuelType
+    transmission: Transmission
+    color: Optional[str] = Field(None, max_length=30)
+    description: Optional[str] = Field(None, max_length=2000)
+    actual_price: Price = Field(..., gt=0, le=Decimal("100000000"), decimal_places=2)
+    discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
+    status: Status = "Available"
 
-    insurance_type: Optional[str] = None
+    squash_text = field_validator("name", "brand", "color")(_clean)
+    check_year = field_validator("year")(_check_year)
 
-    engine_specs: Optional[Union[Dict[str, Any], str]] = None
-    dimensions: Optional[Union[Dict[str, Any], str]] = None
-    capacity_fuel: Optional[Union[Dict[str, Any], str]] = None
-    suspension: Optional[Union[Dict[str, Any], str]] = None
-    tyres: Optional[Union[Dict[str, Any], str]] = None
-    features: Optional[Union[Dict[str, Any], str]] = None
+    @model_validator(mode="after")
+    def _discount_below_actual(self):
+        if self.discounted_price is not None and self.discounted_price >= self.actual_price:
+            raise ValueError("Discounted price must be less than actual price")
+        return self
 
-    color: Optional[str] = None
-    registration_number: Optional[str] = None
-    registration_year: Optional[int] = None
-    insurance_valid_until: Optional[str] = None
-    ownership: Optional[str] = None
-    rto: Optional[str] = None
 
-    # Validators reuse
-    @field_validator("fuel_type")
-    @classmethod
-    def validate_fuel_type(cls, v):
-        return CarCreateSchema.validate_fuel_type(v)
+class CarUpdateSchema(_Strict):
+    car_id: UUID
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    brand: Optional[str] = Field(None, min_length=2, max_length=50)
+    car_type: Optional[CarType] = None
+    condition: Optional[Condition] = None
+    year: Optional[int] = None
+    fuel_type: Optional[FuelType] = None
+    transmission: Optional[Transmission] = None
+    color: Optional[str] = Field(None, max_length=30)
+    description: Optional[str] = Field(None, max_length=2000)
+    actual_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
+    discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
+    status: Optional[Status] = None
 
-    @field_validator("transmission")
-    @classmethod
-    def validate_transmission(cls, v):
-        return CarCreateSchema.validate_transmission(v)
+    squash_text = field_validator("name", "brand", "color")(_clean)
+    check_year = field_validator("year")(_check_year)
 
-    @field_validator("insurance_valid_until")
-    @classmethod
-    def validate_insurance_date(cls, v):
-        return CarCreateSchema.validate_insurance_date(v)
+    @model_validator(mode="after")
+    def _required_stay_required(self):
+        # Explicit null would wipe a NOT NULL column.
+        required = {"name", "brand", "car_type", "condition", "year", "fuel_type",
+                    "transmission", "actual_price", "status"}
+        nulled = sorted(f for f in self.model_fields_set & required if getattr(self, f) is None)
+        if nulled:
+            raise ValueError(f"These fields cannot be empty: {', '.join(nulled)}")
+        return self
 
-# =========================
-# SIMPLE REQUEST SCHEMAS
-# =========================
+
 class CarIDOnlySchema(BaseModel):
     car_id: UUID
     image_type: Optional[str] = None
 
 
-class CarDeleteSchema(BaseModel):
-    car_id: UUID
-    confirm: bool
+CarIdSchema = CarIDOnlySchema
 
 
-# =========================
-# RESPONSE SCHEMA
-# =========================
+class ImageDeleteSchema(BaseModel):
+    image_id: UUID
+
+
 class CarResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     name: str
     brand: str
+    car_type: str
+    condition: str
     year: int
-    car_type:str
-    kilometer: Optional[int]
-    fuel_type: Optional[str]
-    transmission: Optional[str]
-    price: Optional[int]
-
-    engine_specs: Optional[Union[Dict[str, Any], str]]
-    dimensions: Optional[Union[Dict[str, Any], str]]
-    capacity_fuel: Optional[Union[Dict[str, Any], str]]
-    suspension: Optional[Union[Dict[str, Any], str]]
-    tyres: Optional[Union[Dict[str, Any], str]]
-    features: Optional[Union[Dict[str, Any], str]]
-
+    fuel_type: str
+    transmission: str
     color: Optional[str]
-    registration_number: Optional[str]
-    registration_year: Optional[int]
-    insurance_valid_until: Optional[str]
-    ownership: Optional[str]
-    rto: Optional[str]
-
+    description: Optional[str]
+    actual_price: Decimal
+    discounted_price: Optional[Decimal]
+    status: str
+    banner_image: Optional[str] = None
+    image_count: int = 0
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
-
-    model_config = {
-        "from_attributes": True
-    }
-class CarIdSchema(BaseModel):
-    car_id: UUID
-
-class ImageDeleteSchema(BaseModel):
-    image_id: UUID    

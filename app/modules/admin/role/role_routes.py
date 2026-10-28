@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
-from app.core.permissions import requireORGANIZATION_ADMIN
+from app.core.permissions import ROLES, require_roles
 from app.modules.admin.role.role_model import Role
 from app.modules.admin.role.employee_role_model import EmployeeRole
 from app.modules.admin.employee.employee_model import Employee
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/admin/roles", tags=["Roles"])
 @router.post("/create")
 async def create_role(
     payload: RoleCreate,
-    user = Depends(requireORGANIZATION_ADMIN()),
+    user = Depends(require_roles(*ROLES)),
     db: AsyncSession = Depends(get_db)
 ):
     # Check if role already exists
@@ -47,7 +47,7 @@ async def create_role(
 @router.post("/assign")
 async def assign_role(
     payload: AssignRoleSchema,
-    user=Depends(requireORGANIZATION_ADMIN()),
+    user=Depends(require_roles(*ROLES)),
     db: AsyncSession = Depends(get_db)
 ):
     emp = await db.get(Employee, payload.employee_id)
@@ -85,7 +85,7 @@ async def assign_role(
 
 @router.get("/getroles", response_model=List[RoleResponse])
 async def get_active_roles(
-    user = Depends(requireORGANIZATION_ADMIN()),
+    user = Depends(require_roles(*ROLES)),
     db: AsyncSession = Depends(get_db)
 ):
 

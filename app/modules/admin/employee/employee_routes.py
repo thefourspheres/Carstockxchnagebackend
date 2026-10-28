@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
-from app.core.permissions import require_admin, require_roles
+from app.core.permissions import EMPLOYEES, require_roles
 
 from .employee_schema import EmployeeSignupRequest
 from .employee_service import EmployeeService
@@ -23,7 +23,7 @@ router = APIRouter(
 async def signup(
     payload: EmployeeSignupRequest,
     db: AsyncSession = Depends(get_db),
-    admin=Depends(require_admin())   # 👈 ADMIN TOKEN
+    admin=Depends(require_roles(*EMPLOYEES))   # 👈 ADMIN TOKEN
 ):
     try:
         await EmployeeService.signup(db, payload,admin)
@@ -59,7 +59,7 @@ async def signup(
 
 @router.get("/employeelist")
 async def get_all_employees(
-    admin=Depends(require_admin()),
+    admin=Depends(require_roles(*EMPLOYEES)),
     db: AsyncSession = Depends(get_db)
 ):
     EXCLUDED_ROLES = {"SUPER_ADMIN", "ORGANIZATION_ADMIN", "ADMIN"}
