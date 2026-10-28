@@ -157,3 +157,19 @@ async def test_role_assign_is_org_scoped_and_no_escalation(client):
     assert (await post("mine", "sup")).status_code == 403
     assert (await post("mine", "sales", HR)).status_code == 403
     assert (await post("mine", "sales")).status_code == 200
+
+
+async def test_public_leads_reach_admin(client):
+    from app.core.config import settings
+    admin = auth("ORGANIZATION_ADMIN", org=str(settings.ORG_ID))
+    r = await client.post("/public/leads/callback", json={"name": "Ravi", "mobile": "+91 98765 43210"})
+    assert r.status_code == 200, r.text
+    r = await client.post("/public/leads/test-drive", json={"name": "Ravi", "mobile": "9876543210",
+                                                             "car_brand": "Honda", "car_model": "City"})
+    assert r.status_code == 200, r.text
+    calls = (await client.get("/admin/leads/callback", headers=admin)).json()
+    assert [c["mobile"] for c in calls] == ["9876543210"]
+    assert len((await client.get("/admin/leads/testdrive", headers=admin)).json()) == 1
+    for bad in ["12345", "5876543210", "98765432101"]:
+        r = await client.post("/public/leads/callback", json={"name": "Ravi", "mobile": bad})
+        assert r.status_code == 422, bad

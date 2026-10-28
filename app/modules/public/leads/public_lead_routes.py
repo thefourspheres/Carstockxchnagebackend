@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.modules.admin.leads.lead_model import CustomerLead, carsaleslead
 from .public_lead_schema import (
@@ -19,6 +20,7 @@ router = APIRouter(
 @router.post("/callback")
 async def request_callback(payload: CallbackRequest, db: AsyncSession = Depends(get_db)):
     lead = CustomerLead(
+        organization_id=settings.ORG_ID,
         lead_type="CALLBACK",
         name=payload.name,
         mobile=payload.mobile,
@@ -35,6 +37,7 @@ async def request_callback(payload: CallbackRequest, db: AsyncSession = Depends(
 @router.post("/test-drive")
 async def request_test_drive(payload: TestDriveRequest, db: AsyncSession = Depends(get_db)):
     lead = CustomerLead(
+        organization_id=settings.ORG_ID,
         lead_type="TEST_DRIVE",
         name=payload.name,
         mobile=payload.mobile,
@@ -52,6 +55,7 @@ async def request_test_drive(payload: TestDriveRequest, db: AsyncSession = Depen
 @router.post("/car-report")
 async def request_car_report(payload: CarReportRequest, db: AsyncSession = Depends(get_db)):
     lead = CustomerLead(
+        organization_id=settings.ORG_ID,
         lead_type="CAR_REPORT",
         name=payload.name,
         mobile=payload.mobile,
