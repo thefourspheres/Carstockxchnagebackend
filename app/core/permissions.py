@@ -16,9 +16,6 @@ def require_roles(*required_roles):
     def checker(user: dict = Depends(get_current_user)):
         user_roles = [r.upper() for r in user.get("roles", [])]
 
-        print("USER ROLES:", user_roles)
-        print("REQUIRED ROLES:", flat_required)
-
         if not any(role in user_roles for role in flat_required):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -38,3 +35,12 @@ def requireORGANIZATION_ADMIN():
 
 def require_admin():
     return require_roles("ADMIN", "SUPER_ADMIN","ORGANIZATION_ADMIN")
+
+
+# Module access matrix (keep in sync with admin src/app/core/access.ts)
+ADMINS = ("SUPER_ADMIN", "ORGANIZATION_ADMIN")
+CAR_MANAGE = ADMINS + ("PURCHASE",)
+CAR_VIEW = CAR_MANAGE + ("SALES",)
+LEADS = ADMINS + ("SALES",)
+EMPLOYEES = ADMINS + ("HR",)
+ROLES = ADMINS

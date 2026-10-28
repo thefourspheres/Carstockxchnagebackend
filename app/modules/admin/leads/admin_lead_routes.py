@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import UUID, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.permissions import LEADS, require_roles
 from app.modules.admin.leads.admin_lead_schema import (
     CarSalesLeadResponse,
     LeadFilterRequest,
@@ -21,11 +21,8 @@ router = APIRouter(
 async def list_leads(
     payload: LeadFilterRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles(*LEADS))
 ):
-    # Optional admin check
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Access denied")
 
     return await AdminLeadService.list_leads(db, payload)
 
@@ -34,12 +31,8 @@ async def list_leads(
 @router.get("/callback", response_model=list[LeadResponse])
 async def get_callback_leads(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles(*LEADS))
 ):
-    print("Current User:", current_user)  # Debugging line to check user info
-    #  Role Check
-    if "SALES" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Sales access only")
 
     organization_id = current_user.get("organization_id")
 
@@ -52,10 +45,8 @@ async def get_callback_leads(
 @router.get("/testdrive", response_model=list[LeadResponse])
 async def get_testdrive_leads(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles(*LEADS))
 ):
-    if "SALES" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Sales access only")
 
     organization_id = current_user.get("organization_id")
 
@@ -69,10 +60,8 @@ async def get_testdrive_leads(
 @router.get("/carsale", response_model=list[CarSalesLeadResponse])
 async def get_carsale_leads(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles(*LEADS))
 ):
-    if "SALES" not in current_user.get("roles", []):
-        raise HTTPException(status_code=403, detail="Sales access only")
 
     result = await db.execute(select(carsaleslead))
     leads = result.scalars().all()
