@@ -17,6 +17,7 @@ ORG_A, ORG_B = str(uuid.uuid4()), str(uuid.uuid4())
 CAR = {
     "name": "City ZX", "brand": "Honda", "car_type": "Sedan", "condition": "Used",
     "year": 2021, "fuel_type": "Petrol", "transmission": "Manual", "color": "White",
+    "owner": 1, "kilometer": 42000,
     "description": "Single owner", "actual_price": 850000, "discounted_price": 799000,
     "status": "Available",
 }
@@ -62,7 +63,10 @@ async def test_create_list_get(client):
     {"fuel_type": "petrol"},               # exact enum values only
     {"year": 1970},
     {"name": " "},
-    {"kilometer": 10000},                  # removed field is rejected
+    {"kilometer": -1},
+    {"owner": 0},
+    {"owner": 11},
+    {"mileage": 10000},                    # unknown field is rejected
     {"description": "x" * 2001},
 ])
 async def test_validation(client, bad):
@@ -173,3 +177,31 @@ async def test_public_leads_reach_admin(client):
     for bad in ["12345", "5876543210", "98765432101"]:
         r = await client.post("/public/leads/callback", json={"name": "Ravi", "mobile": bad})
         assert r.status_code == 422, bad
+
+
+async def test_sold_purges_images_and_hides_car(client, tmp_path, monkeypatch):
+    from sqlalchemy import func, select
+    from app.core.config import settings
+    from app.core.database import AsyncSessionLocal
+    from app.modules.admin.cars.car_image_model import CarImage
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+
+    car_id = (await create(client)).json()["car_id"]
+    got = (await client.post("/cars/get-car-by-id", json={"car_id": car_id}, headers=ADMIN)).json()["data"]
+    assert (got["owner"], got["kilometer"]) == (1, 42000)
+    up = lambda: client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
+                             files={"files": ("a.webp", b"RIFF0000WEBP", "image/webp")}, headers=ADMIN)
+    imgs = [(await up()).json()["images"][0] for _ in range(2)]
+    await client.post("/cars/delete-image", json={"image_id": imgs[0]["id"]}, headers=ADMIN)  # soft-deleted one
+    files = list(tmp_path.rglob("*.webp"))
+    assert len(files) == 2
+
+    r = await client.put("/cars/update", json={"car_id": car_id, "status": "Sold"}, headers=PURCHASE)
+    assert r.status_code == 200, r.text
+    async with AsyncSessionLocal() as db:
+        assert await db.scalar(select(func.count()).select_from(CarImage)) == 0
+    assert not any(f.exists() for f in files) and tmp_path.exists()
+    assert (await client.post("/cars/list", headers=ADMIN)).json()["total"] == 0
+    assert (await client.post("/cars/list", json={"status": "Sold"}, headers=ADMIN)).json()["total"] == 1
+    assert (await client.get("/public/cars/all")).json() == []
+    assert (await up()).status_code == 409

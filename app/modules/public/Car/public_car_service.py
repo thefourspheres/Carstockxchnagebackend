@@ -10,7 +10,7 @@ from app.modules.admin.cars.car_options import PUBLIC_STATUSES
 
 # Never expose internal fields (created_by, organization_id, is_active).
 PUBLIC_FIELDS = ("name", "brand", "car_type", "condition", "year", "fuel_type",
-                 "transmission", "color", "description", "status")
+                 "transmission", "color", "owner", "kilometer", "description", "status")
 
 
 def _public_car(car: Car) -> dict:
