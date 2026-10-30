@@ -12,6 +12,8 @@ Transmission = Literal["Manual", "Automatic", "AMT", "CVT", "DCT"]
 Status = Literal["Available", "Reserved", "Sold", "Draft"]
 
 MIN_YEAR = 1980
+Owner = int
+MAX_KM = 2_000_000
 Price = Decimal
 
 
@@ -45,6 +47,8 @@ class CarCreateSchema(_Strict):
     fuel_type: FuelType
     transmission: Transmission
     color: Optional[str] = Field(None, max_length=30)
+    owner: Optional[Owner] = Field(None, ge=1, le=10)
+    kilometer: Optional[int] = Field(None, ge=0, le=MAX_KM)
     description: Optional[str] = Field(None, max_length=2000)
     actual_price: Price = Field(..., gt=0, le=Decimal("100000000"), decimal_places=2)
     discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
@@ -70,6 +74,8 @@ class CarUpdateSchema(_Strict):
     fuel_type: Optional[FuelType] = None
     transmission: Optional[Transmission] = None
     color: Optional[str] = Field(None, max_length=30)
+    owner: Optional[Owner] = Field(None, ge=1, le=10)
+    kilometer: Optional[int] = Field(None, ge=0, le=MAX_KM)
     description: Optional[str] = Field(None, max_length=2000)
     actual_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
     discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
@@ -113,6 +119,8 @@ class CarResponseSchema(BaseModel):
     fuel_type: str
     transmission: str
     color: Optional[str]
+    owner: Optional[int] = None
+    kilometer: Optional[int] = None
     description: Optional[str]
     actual_price: Decimal
     discounted_price: Optional[Decimal]

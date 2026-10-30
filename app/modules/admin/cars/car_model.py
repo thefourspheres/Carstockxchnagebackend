@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Boolean, Numeric, DateTime, Text, Index, CheckConstraint
+from sqlalchemy import Column, String, Integer, SmallInteger, Boolean, Numeric, DateTime, Text, Index, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -25,6 +25,8 @@ class Car(Base):
     fuel_type = Column(String(20), nullable=False)
     transmission = Column(String(20), nullable=False)
     color = Column(String(30), nullable=True)
+    owner = Column(SmallInteger, nullable=True)  # 1 = first owner
+    kilometer = Column(Integer, nullable=True)
     description = Column(Text, nullable=True)
     actual_price = Column(Numeric(12, 2), nullable=False)
     discounted_price = Column(Numeric(12, 2), nullable=True)

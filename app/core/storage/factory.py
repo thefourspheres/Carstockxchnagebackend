@@ -123,7 +123,7 @@ class LocalStorage(StorageService):
             # Convert URL path to filesystem path
             if file_path.startswith("/uploads/"):
                 # Remove the /uploads/ prefix
-                relative_path = file_path[8:]  # len("/uploads/") = 9
+                relative_path = file_path[len("/uploads/"):]
                 fs_path = os.path.join(self.base_dir, relative_path)
             else:
                 fs_path = os.path.join(self.base_dir, file_path)
@@ -150,7 +150,10 @@ class LocalStorage(StorageService):
         """Recursively remove empty directories."""
         try:
             # Walk up from the directory to base_dir
-            while directory and directory.startswith(self.base_dir):
+            base = os.path.abspath(self.base_dir)
+            directory = os.path.abspath(directory)
+            # Never remove the storage root itself.
+            while directory.startswith(base + os.sep):
                 if os.path.exists(directory) and os.path.isdir(directory):
                     # Check if directory is empty
                     if not os.listdir(directory):

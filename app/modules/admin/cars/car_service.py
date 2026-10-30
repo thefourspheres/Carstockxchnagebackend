@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
@@ -15,6 +16,7 @@ from .car_schema import CarCreateSchema, CarUpdateSchema
 IMAGE_TYPES = {"banner", "exterior", "interior", "engine"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_FILES_PER_UPLOAD = 20
+log = logging.getLogger(__name__)
 
 
 def _ids(user: dict) -> tuple[UUID, UUID]:
@@ -27,11 +29,21 @@ def _summary(car: Car) -> dict:
     return {
         "id": car.id, "name": car.name, "brand": car.brand, "car_type": car.car_type,
         "condition": car.condition, "year": car.year, "fuel_type": car.fuel_type,
-        "transmission": car.transmission, "color": car.color, "description": car.description,
+        "transmission": car.transmission, "color": car.color, "owner": car.owner,
+        "kilometer": car.kilometer, "description": car.description,
         "actual_price": car.actual_price, "discounted_price": car.discounted_price,
         "status": car.status, "banner_image": banner or (active[0].image_url if active else None),
         "image_count": len(active), "created_at": car.created_at, "updated_at": car.updated_at,
     }
+
+
+async def _delete_files(paths: List[str]) -> None:
+    storage = get_storage()
+    for p in paths:
+        try:
+            await storage.delete(p)
+        except Exception:
+            log.exception("Could not delete file %s", p)
 
 
 class CarService:
@@ -63,8 +75,8 @@ class CarService:
         q = (select(Car).options(selectinload(Car.images))
              .where(Car.organization_id == org_id, Car.is_active.is_(True))
              .order_by(Car.created_at.desc()))
-        if status:
-            q = q.where(Car.status == status)
+        # Sold cars leave the normal listing; they are only shown when filtered by Sold.
+        q = q.where(Car.status == status) if status else q.where(Car.status != "Sold")
         if search:
             term = f"%{search.strip()[:50]}%"
             q = q.where(or_(Car.name.ilike(term), Car.brand.ilike(term)))
@@ -83,11 +95,23 @@ class CarService:
         discounted = changes.get("discounted_price", car.discounted_price)
         if discounted is not None and Decimal(discounted) >= actual:
             raise HTTPException(422, "Discounted price must be less than actual price")
+        became_sold = changes.get("status") == "Sold" and car.status != "Sold"
         for key, value in changes.items():
             setattr(car, key, value)
+        files = await CarService._purge_images(db, car.id) if became_sold else []
         await db.commit()
+        await _delete_files(files)  # after commit, so a failed save never loses photos
         await db.refresh(car)
         return car
+
+    @staticmethod
+    async def _purge_images(db: AsyncSession, car_id: UUID) -> List[str]:
+        """Hard-delete every image row (active or soft-deleted) and return their file paths."""
+        imgs = (await db.execute(select(CarImage).where(CarImage.car_id == car_id))).scalars().all()
+        files = [p for i in imgs for p in (i.image_url, i.thumbnail_url) if p]
+        for img in imgs:
+            await db.delete(img)
+        return files
 
     @staticmethod
     async def delete_car(db: AsyncSession, car_id: UUID, user: dict) -> None:
@@ -105,7 +129,9 @@ class CarService:
             raise HTTPException(400, f"image_type must be one of: {', '.join(sorted(IMAGE_TYPES))}")
         if not files or len(files) > MAX_FILES_PER_UPLOAD:
             raise HTTPException(400, f"Upload 1 to {MAX_FILES_PER_UPLOAD} images at a time")
-        await CarService._get(db, car_id, user)
+        car = await CarService._get(db, car_id, user)
+        if car.status == "Sold":
+            raise HTTPException(409, "This car is sold; photos can no longer be added")
 
         storage = get_storage()
         _, org_id = _ids(user)
