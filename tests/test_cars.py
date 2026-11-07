@@ -138,6 +138,13 @@ async def test_upload_rejects_bad_type_and_traversal(client):
                           files=files, headers=ADMIN)
     assert r.status_code == 400
     r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
+                          files={"files": ("a.webp", b"<?php echo 1;", "image/webp")}, headers=ADMIN)
+    assert r.status_code == 400  # renamed file, not real WebP
+    big = b"RIFF0000WEBP" + b"0" * (10 * 1024 * 1024)
+    r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
+                          files={"files": ("a.webp", big, "image/webp")}, headers=ADMIN)
+    assert r.status_code == 413
+    r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
                           files={"files": ("a.php", b"<?php", "application/x-php")}, headers=ADMIN)
     assert r.status_code == 400
 
