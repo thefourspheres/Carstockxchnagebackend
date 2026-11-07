@@ -27,6 +27,7 @@ class Car(Base):
     color = Column(String(30), nullable=True)
     owner = Column(SmallInteger, nullable=True)  # 1 = first owner
     kilometer = Column(Integer, nullable=True)
+    registration_number = Column(String(15), nullable=True)  # admin only, used to skip duplicates on import
     description = Column(Text, nullable=True)
     actual_price = Column(Numeric(12, 2), nullable=False)
     discounted_price = Column(Numeric(12, 2), nullable=True)

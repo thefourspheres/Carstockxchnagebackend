@@ -30,7 +30,8 @@ def _summary(car: Car) -> dict:
         "id": car.id, "name": car.name, "brand": car.brand, "car_type": car.car_type,
         "condition": car.condition, "year": car.year, "fuel_type": car.fuel_type,
         "transmission": car.transmission, "color": car.color, "owner": car.owner,
-        "kilometer": car.kilometer, "description": car.description,
+        "kilometer": car.kilometer, "registration_number": car.registration_number,
+        "description": car.description,
         "actual_price": car.actual_price, "discounted_price": car.discounted_price,
         "status": car.status, "banner_image": banner or (active[0].image_url if active else None),
         "image_count": len(active), "created_at": car.created_at, "updated_at": car.updated_at,
@@ -62,11 +63,23 @@ class CarService:
     @staticmethod
     async def create_car(db: AsyncSession, payload: CarCreateSchema, user: dict) -> Car:
         user_id, org_id = _ids(user)
+        await CarService._check_reg_free(db, org_id, payload.registration_number)
         car = Car(**payload.model_dump(), created_by=user_id, organization_id=org_id)
         db.add(car)
         await db.commit()
         await db.refresh(car)
         return car
+
+    @staticmethod
+    async def _check_reg_free(db: AsyncSession, org_id: UUID, reg: Optional[str], car_id: Optional[UUID] = None):
+        if not reg:
+            return
+        q = select(Car.id).where(Car.organization_id == org_id, Car.is_active.is_(True),
+                                 Car.registration_number == reg)
+        if car_id:
+            q = q.where(Car.id != car_id)
+        if (await db.execute(q)).first():
+            raise HTTPException(409, f"A car with registration {reg} already exists")
 
     @staticmethod
     async def list_cars(db: AsyncSession, user: dict, status: Optional[str] = None,
@@ -79,7 +92,7 @@ class CarService:
         q = q.where(Car.status == status) if status else q.where(Car.status != "Sold")
         if search:
             term = f"%{search.strip()[:50]}%"
-            q = q.where(or_(Car.name.ilike(term), Car.brand.ilike(term)))
+            q = q.where(or_(Car.name.ilike(term), Car.brand.ilike(term), Car.registration_number.ilike(term)))
         cars = (await db.execute(q)).scalars().all()
         return [_summary(c) for c in cars]
 
@@ -95,6 +108,8 @@ class CarService:
         discounted = changes.get("discounted_price", car.discounted_price)
         if discounted is not None and Decimal(discounted) >= actual:
             raise HTTPException(422, "Discounted price must be less than actual price")
+        if changes.get("registration_number"):
+            await CarService._check_reg_free(db, car.organization_id, changes["registration_number"], car.id)
         became_sold = changes.get("status") == "Sold" and car.status != "Sold"
         for key, value in changes.items():
             setattr(car, key, value)

@@ -28,6 +28,18 @@ def _clean(v: Optional[str]) -> Optional[str]:
     return v or None
 
 
+def _reg(v: Optional[str]) -> Optional[str]:
+    """MH 12-AB 1234 -> MH12AB1234. Empty means unregistered."""
+    if v is None:
+        return None
+    v = "".join(ch for ch in str(v).upper() if ch.isalnum())
+    if not v:
+        return None
+    if not 4 <= len(v) <= 15:
+        raise ValueError("Registration number must be 4 to 15 letters/digits")
+    return v
+
+
 def _check_year(v: Optional[int]) -> Optional[int]:
     if v is not None and not MIN_YEAR <= v <= _max_year():
         raise ValueError(f"Model year must be between {MIN_YEAR} and {_max_year()}")
@@ -49,6 +61,7 @@ class CarCreateSchema(_Strict):
     color: Optional[str] = Field(None, max_length=30)
     owner: Optional[Owner] = Field(None, ge=1, le=10)
     kilometer: Optional[int] = Field(None, ge=0, le=MAX_KM)
+    registration_number: Optional[str] = None
     description: Optional[str] = Field(None, max_length=2000)
     actual_price: Price = Field(..., gt=0, le=Decimal("100000000"), decimal_places=2)
     discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
@@ -56,6 +69,7 @@ class CarCreateSchema(_Strict):
 
     squash_text = field_validator("name", "brand", "color")(_clean)
     check_year = field_validator("year")(_check_year)
+    check_reg = field_validator("registration_number", mode="before")(_reg)
 
     @model_validator(mode="after")
     def _discount_below_actual(self):
@@ -76,6 +90,7 @@ class CarUpdateSchema(_Strict):
     color: Optional[str] = Field(None, max_length=30)
     owner: Optional[Owner] = Field(None, ge=1, le=10)
     kilometer: Optional[int] = Field(None, ge=0, le=MAX_KM)
+    registration_number: Optional[str] = None
     description: Optional[str] = Field(None, max_length=2000)
     actual_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
     discounted_price: Optional[Price] = Field(None, gt=0, le=Decimal("100000000"), decimal_places=2)
@@ -83,6 +98,7 @@ class CarUpdateSchema(_Strict):
 
     squash_text = field_validator("name", "brand", "color")(_clean)
     check_year = field_validator("year")(_check_year)
+    check_reg = field_validator("registration_number", mode="before")(_reg)
 
     @model_validator(mode="after")
     def _required_stay_required(self):
@@ -121,6 +137,7 @@ class CarResponseSchema(BaseModel):
     color: Optional[str]
     owner: Optional[int] = None
     kilometer: Optional[int] = None
+    registration_number: Optional[str] = None
     description: Optional[str]
     actual_price: Decimal
     discounted_price: Optional[Decimal]
