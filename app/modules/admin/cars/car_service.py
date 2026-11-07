@@ -14,7 +14,7 @@ from .car_model import Car
 from .car_schema import CarCreateSchema, CarUpdateSchema
 
 IMAGE_TYPES = {"banner", "exterior", "interior", "engine"}
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_FILES_PER_UPLOAD = 20
 log = logging.getLogger(__name__)
 
@@ -156,7 +156,11 @@ class CarService:
             if file.content_type != "image/webp" or not (file.filename or "").lower().endswith(".webp"):
                 raise HTTPException(400, "Only WEBP images allowed")
             if file.size is not None and file.size > MAX_IMAGE_BYTES:
-                raise HTTPException(413, "Each image must be 5 MB or smaller")
+                raise HTTPException(413, "Each image must be 10 MB or smaller")
+            head = await file.read(12)
+            await file.seek(0)
+            if head[:4] != b"RIFF" or head[8:12] != b"WEBP":  # real WebP, not a renamed file
+                raise HTTPException(400, "Only WEBP images allowed")
             path = await storage.upload(file, base_path)
             img = CarImage(car_id=car_id, image_type=image_type, image_url=path,
                            content_type=file.content_type,
