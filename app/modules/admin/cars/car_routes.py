@@ -16,6 +16,7 @@ from .car_schema import (
     ImageDeleteSchema,
     Status,
 )
+from .car_import import import_cars
 from .car_service import CarService
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
@@ -104,3 +105,11 @@ async def delete_all_images(payload: CarIDOnlySchema, db: AsyncSession = Depends
                             user=Depends(can_manage)):
     await CarService.delete_all_car_images(db, payload.car_id, user)
     return {"success": True, "message": "All images deleted"}
+
+
+@router.post("/bulk-upload")
+async def bulk_upload(file: UploadFile = File(...), dry_run: bool = Form(True),
+                      db: AsyncSession = Depends(get_db), user=Depends(can_manage)):
+    """Preview (dry_run=true) or import the stock sheet. Only rows not already in stock are added."""
+    data = await file.read(2 * 1024 * 1024 + 1)
+    return await import_cars(db, data, user, dry_run)
