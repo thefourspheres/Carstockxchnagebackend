@@ -1,5 +1,6 @@
 """Car API tests. Needs a throwaway Postgres in DATABASE_URL (tables are dropped)."""
 import importlib
+import io
 import pathlib
 import uuid
 
@@ -21,6 +22,19 @@ CAR = {
     "description": "Single owner", "actual_price": 850000, "discounted_price": 799000,
     "status": "Available",
 }
+
+
+def photo(fmt="JPEG", size=(3000, 2000), exif=True) -> bytes:
+    from PIL import Image
+    im = Image.new("RGB", size, (20, 90, 160))
+    buf = io.BytesIO()
+    kw = {}
+    if exif and fmt == "JPEG":
+        e = Image.Exif()
+        e[0x0112] = 6  # orientation: rotate 90
+        kw["exif"] = e.tobytes()
+    im.save(buf, fmt, **kw)
+    return buf.getvalue()
 
 
 def auth(*roles, org=ORG_A):
@@ -133,14 +147,14 @@ async def test_public_hides_drafts_and_internal_fields(client):
 
 async def test_upload_rejects_bad_type_and_traversal(client):
     car_id = (await create(client)).json()["car_id"]
-    files = {"files": ("a.webp", b"RIFF0000WEBP", "image/webp")}
+    files = {"files": ("a.webp", photo("WEBP"), "image/webp")}
     r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "../../etc"},
                           files=files, headers=ADMIN)
     assert r.status_code == 400
     r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
                           files={"files": ("a.webp", b"<?php echo 1;", "image/webp")}, headers=ADMIN)
     assert r.status_code == 400  # renamed file, not real WebP
-    big = b"RIFF0000WEBP" + b"0" * (10 * 1024 * 1024)
+    big = photo("WEBP") + b"0" * (10 * 1024 * 1024)
     r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
                           files={"files": ("a.webp", big, "image/webp")}, headers=ADMIN)
     assert r.status_code == 413
@@ -197,7 +211,7 @@ async def test_sold_purges_images_and_hides_car(client, tmp_path, monkeypatch):
     got = (await client.post("/cars/get-car-by-id", json={"car_id": car_id}, headers=ADMIN)).json()["data"]
     assert (got["owner"], got["kilometer"]) == (1, 42000)
     up = lambda: client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "banner"},
-                             files={"files": ("a.webp", b"RIFF0000WEBP", "image/webp")}, headers=ADMIN)
+                             files={"files": ("a.webp", photo("WEBP"), "image/webp")}, headers=ADMIN)
     imgs = [(await up()).json()["images"][0] for _ in range(2)]
     await client.post("/cars/delete-image", json={"image_id": imgs[0]["id"]}, headers=ADMIN)  # soft-deleted one
     files = list(tmp_path.rglob("*.webp"))
@@ -212,3 +226,19 @@ async def test_sold_purges_images_and_hides_car(client, tmp_path, monkeypatch):
     assert (await client.post("/cars/list", json={"status": "Sold"}, headers=ADMIN)).json()["total"] == 1
     assert (await client.get("/public/cars/all")).json() == []
     assert (await up()).status_code == 409
+
+
+async def test_phone_photos_become_upright_small_webp(client, tmp_path, monkeypatch):
+    from PIL import Image
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
+    car_id = (await create(client)).json()["car_id"]
+    files = [("files", ("IMG_1.JPG", photo("JPEG"), "image/jpeg")),
+             ("files", ("shot.png", photo("PNG", (800, 600)), "image/png"))]
+    r = await client.post("/cars/upload-images", data={"car_id": car_id, "image_type": "exterior"}, files=files, headers=ADMIN)
+    assert r.status_code == 201, r.text
+    saved = sorted(tmp_path.rglob("*.webp"), key=lambda f: f.stat().st_size)
+    assert len(saved) == 2
+    sizes = {Image.open(f).size for f in saved}
+    assert sizes == {(1280, 1920), (800, 600)}  # JPEG rotated by EXIF and capped at 1920
+    assert all(not Image.open(f).getexif() for f in saved)  # metadata (GPS etc.) dropped
