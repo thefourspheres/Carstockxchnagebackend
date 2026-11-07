@@ -1,9 +1,14 @@
+import asyncio
+import io
 import logging
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, UploadFile
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pillow_heif import register_heif_opener
+from starlette.datastructures import Headers
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,6 +22,29 @@ IMAGE_TYPES = {"banner", "exterior", "interior", "engine"}
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_FILES_PER_UPLOAD = 20
 log = logging.getLogger(__name__)
+
+register_heif_opener()  # iPhone HEIC photos
+Image.MAX_IMAGE_PIXELS = 60_000_000  # ~60 MP, blocks decompression bombs
+PHOTO_FORMATS = {"JPEG", "MPO", "PNG", "WEBP", "HEIF"}
+MAX_SIDE = 1920
+
+
+def _to_webp(data: bytes) -> bytes:
+    """Any phone photo -> upright WebP, max 1920 px, metadata (GPS etc.) dropped."""
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            if im.format not in PHOTO_FORMATS:
+                raise ValueError(im.format)
+            im.draft("RGB", (MAX_SIDE, MAX_SIDE))  # fast JPEG decode at reduced size
+            im = ImageOps.exif_transpose(im)
+            im.thumbnail((MAX_SIDE, MAX_SIDE))
+            if im.mode not in ("RGB", "RGBA"):
+                im = im.convert("RGBA" if "A" in im.getbands() else "RGB")
+            out = io.BytesIO()
+            im.save(out, "WEBP", quality=80, method=4)
+            return out.getvalue()
+    except (UnidentifiedImageError, Image.DecompressionBombError, ValueError, OSError):
+        raise HTTPException(400, "Unsupported photo. Use JPG, PNG, WebP or HEIC.")
 
 
 def _ids(user: dict) -> tuple[UUID, UUID]:
@@ -153,18 +181,16 @@ class CarService:
         base_path = f"org/{org_id}/cars/{car_id}/{image_type}"
         images = []
         for file in files:
-            if file.content_type != "image/webp" or not (file.filename or "").lower().endswith(".webp"):
-                raise HTTPException(400, "Only WEBP images allowed")
-            if file.size is not None and file.size > MAX_IMAGE_BYTES:
-                raise HTTPException(413, "Each image must be 10 MB or smaller")
-            head = await file.read(12)
-            await file.seek(0)
-            if head[:4] != b"RIFF" or head[8:12] != b"WEBP":  # real WebP, not a renamed file
-                raise HTTPException(400, "Only WEBP images allowed")
-            path = await storage.upload(file, base_path)
+            data = await file.read(MAX_IMAGE_BYTES + 1)
+            if len(data) > MAX_IMAGE_BYTES:
+                raise HTTPException(413, "Each photo must be 10 MB or smaller")
+            # Always re-encode: converts phone formats and strips anything hidden in the file.
+            webp = await asyncio.to_thread(_to_webp, data)
+            stored = UploadFile(io.BytesIO(webp), filename="photo.webp", size=len(webp),
+                                headers=Headers({"content-type": "image/webp"}))
+            path = await storage.upload(stored, base_path)
             img = CarImage(car_id=car_id, image_type=image_type, image_url=path,
-                           content_type=file.content_type,
-                           file_size_kb=(file.size or 0) // 1024 or None)
+                           content_type="image/webp", file_size_kb=len(webp) // 1024 or 1)
             db.add(img)
             images.append(img)
         await db.commit()
